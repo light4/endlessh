@@ -1,35 +1,52 @@
+use anyhow::Result;
 use std::io;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::time::{sleep, Duration};
+use tracing::{debug, error, info};
+use tracing_subscriber;
+
+const ADDR: &'static str = "0.0.0.0:2222";
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() {
-    let listener = TcpListener::bind("0.0.0.0:2222").await.unwrap();
+async fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
+
+    let listener = TcpListener::bind(ADDR).await?;
+    info!("server listening: {}", ADDR);
 
     loop {
-        let (socket, _) = listener.accept().await.unwrap();
-        process(socket).await;
+        let (socket, _) = listener.accept().await?;
+        tokio::spawn(async move {
+            if let Err(e) = process(socket).await {
+                error!("process error: {:#?}", e);
+            }
+        });
     }
 }
 
-async fn process(socket: TcpStream) {
+async fn process(socket: TcpStream) -> Result<()> {
+    let addr = socket.peer_addr()?;
+    info!("connect from: {}", addr);
+
     loop {
         sleep(Duration::from_secs(10)).await;
-        socket.writable().await.unwrap();
+        socket.writable().await?;
         let s = format!("{:x}\r\n", fastrand::u32(..));
         match socket.try_write(s.as_bytes()) {
             Ok(_) => {
-                dbg!("ok");
+                debug!("write to: {}", addr);
                 continue;
             }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                dbg!("block");
+                debug!("block at: {}", addr);
                 continue;
             }
             Err(e) => {
-                dbg!(e);
+                debug!("error at {}: {:#?}", addr, e);
                 break;
             }
         }
     }
+
+    Ok(())
 }
