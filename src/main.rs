@@ -1,11 +1,13 @@
-use anyhow::Result;
 use std::io;
-use tokio::net::{TcpListener, TcpStream};
-use tokio::time::{sleep, Duration};
-use tracing::{debug, error, info};
-use tracing_subscriber;
 
-const ADDR: &'static str = "0.0.0.0:2222";
+use anyhow::Result;
+use tokio::{
+    net::{TcpListener, TcpStream},
+    time::{sleep, Duration},
+};
+use tracing::{debug, error, info};
+
+const ADDR: &str = "0.0.0.0:2222";
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
